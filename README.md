@@ -80,4 +80,4 @@ To verify the database connection and functionality:
 python test_api.py
 ```
 
-This will test all API endpoints and confirm live data integration. 
+This will test all API endpoints and confirm live data integration.
