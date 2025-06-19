@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sales Coaching Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900">AI Sales Coaching Dashboard</h1>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Call History -->
+            <div class="bg-white shadow rounded-lg mb-6">
+                <div class="px-4 py-5 sm:p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Call History</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Rep</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outcome</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="callsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Call history will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call Details -->
+            <div id="callDetails" class="bg-white shadow rounded-lg hidden">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-900">Call Details</h2>
+                        <button onclick="closeCallDetails()" class="text-gray-400 hover:text-gray-500">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Call Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">Call Information</h3>
+                            <div id="callInfo" class="space-y-2">
+                                <!-- Call info will be populated here -->
+                            </div>
+                            <div class="mt-4">
+                                <h4 class="font-medium text-gray-900 mb-2">Update Call Details</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Call Type</label>
+                                        <select id="callType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="Phone Call">Phone Call</option>
+                                            <option value="In-person">In-person</option>
+                                            <option value="Google Meet">Google Meet</option>
+                                            <option value="Microsoft Teams">Microsoft Teams</option>
+                                            <option value="Zoom">Zoom</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Outcome</label>
+                                        <select id="callOutcome" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="">Select Outcome</option>
+                                            <option value="Won">Won</option>
+                                            <option value="Follow up required">Follow up required</option>
+                                            <option value="Lost">Lost</option>
+                                            <option value="Escalated">Escalated</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Notes</label>
+                                        <textarea id="callNotes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                    </div>
+                                    <button onclick="updateCallDetails()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        Update Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Feedback Summary -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">AI Feedback Summary</h3>
+                            <div id="feedbackSummary" class="space-y-2">
+                                <!-- Feedback summary will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conversation -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Conversation</h3>
+                        <div id="conversation" class="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <!-- Conversation will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Detailed Feedback -->
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Detailed Feedback</h3>
+                        <div id="detailedFeedback" class="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <!-- Detailed feedback will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentCallId = null;
+
+        // Fetch and display call history
+        async function loadCallHistory() {
+            try {
+                const response = await fetch('/api/calls');
+                const calls = await response.json();
+                const tableBody = document.getElementById('callsTableBody');
+                tableBody.innerHTML = '';
+
+                calls.forEach(call => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${new Date(call.timestamp).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.sales_rep_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.customer_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.call_type || 'Phone Call'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                ${call.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getOutcomeColor(call.outcome)}">
+                                ${call.outcome || 'Pending'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button onclick="showCallDetails('${call.id}')" class="text-indigo-600 hover:text-indigo-900">
+                                View Details
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading call history:', error);
+            }
+        }
+
+        function getOutcomeColor(outcome) {
+            switch (outcome) {
+                case 'Won': return 'bg-green-100 text-green-800';
+                case 'Follow up required': return 'bg-yellow-100 text-yellow-800';
+                case 'Lost': return 'bg-red-100 text-red-800';
+                case 'Escalated': return 'bg-purple-100 text-purple-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Show call details
+        async function showCallDetails(callId) {
+            currentCallId = callId;
+            try {
+                const response = await fetch(`/api/calls/${callId}`);
+                const data = await response.json();
+                
+                // Populate call info
+                document.getElementById('callInfo').innerHTML = `
+                    <p><strong>Date:</strong> ${new Date(data.call.timestamp).toLocaleString()}</p>
+                    <p><strong>Sales Rep:</strong> ${data.call.sales_rep_name}</p>
+                    <p><strong>Customer:</strong> ${data.call.customer_name}</p>
+                    <p><strong>Duration:</strong> ${Math.floor(data.call.duration / 60)}:${(data.call.duration % 60).toString().padStart(2, '0')}</p>
+                `;
+
+                // Set form values
+                document.getElementById('callType').value = data.call.call_type || 'Phone Call';
+                document.getElementById('callOutcome').value = data.call.outcome || '';
+                document.getElementById('callNotes').value = data.call.notes || '';
+
+                // Populate conversation
+                const conversationDiv = document.getElementById('conversation');
+                conversationDiv.innerHTML = '';
+                data.call.conversation.forEach(turn => {
+                    const turnDiv = document.createElement('div');
+                    turnDiv.className = `p-3 rounded-lg ${turn.speaker === 'sales_rep' ? 'bg-blue-50' : 'bg-gray-100'}`;
+                    turnDiv.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold">${turn.speaker === 'sales_rep' ? data.call.sales_rep_name : data.call.customer_name}</p>
+                                <p>${turn.text}</p>
+                                <p class="text-xs text-gray-500">${formatTime(turn.startTime)} - ${formatTime(turn.endTime)}</p>
+                            </div>
+                            <div class="ml-4">
+                                <textarea 
+                                    class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    rows="2"
+                                    placeholder="Add notes..."
+                                    onchange="updateTurnNote('${turn.id}', this.value)"
+                                >${turn.notes || ''}</textarea>
+                            </div>
+                        </div>
+                    `;
+                    conversationDiv.appendChild(turnDiv);
+                });
+
+                // Populate feedback if available
+                if (data.feedback) {
+                    document.getElementById('feedbackSummary').innerHTML = `
+                        <p><strong>Overall Score:</strong> ${data.feedback.overall_score.toFixed(1)}/100</p>
+                        <p><strong>Primary Concern:</strong> ${data.feedback.customer_primary_concern}</p>
+                    `;
+
+                    document.getElementById('detailedFeedback').innerHTML = `
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-green-600">What Went Well</h4>
+                            <p>${data.feedback.what_went_well}</p>
+                            ${data.feedback.feedback_timestamps?.what_went_well ? 
+                                `<p class="text-xs text-gray-500">Reference: ${formatTime(data.feedback.feedback_timestamps.what_went_well)}</p>` : ''}
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-red-600">Areas for Improvement</h4>
+                            <p>${data.feedback.what_could_be_improved}</p>
+                            ${data.feedback.feedback_timestamps?.what_could_be_improved ? 
+                                `<p class="text-xs text-gray-500">Reference: ${formatTime(data.feedback.feedback_timestamps.what_could_be_improved)}</p>` : ''}
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="font-semibold">Discovery Questions</h4>
+                            <p>${data.feedback.discovery_questions_assessment}</p>
+                            ${data.feedback.feedback_timestamps?.discovery_questions ? 
+                                `<p class="text-xs text-gray-500">Reference: ${formatTime(data.feedback.feedback_timestamps.discovery_questions)}</p>` : ''}
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="font-semibold">Objection Handling</h4>
+                            <p>${data.feedback.objection_handling_evaluation}</p>
+                            ${data.feedback.feedback_timestamps?.objection_handling ? 
+                                `<p class="text-xs text-gray-500">Reference: ${formatTime(data.feedback.feedback_timestamps.objection_handling)}</p>` : ''}
+                        </div>
+                        <div>
+                            <h4 class="font-semibold">Recommendations</h4>
+                            <ul class="list-disc list-inside">
+                                ${data.feedback.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('feedbackSummary').innerHTML = '<p class="text-gray-500">No feedback available</p>';
+                    document.getElementById('detailedFeedback').innerHTML = '<p class="text-gray-500">No feedback available</p>';
+                }
+
+                // Show the details section
+                document.getElementById('callDetails').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading call details:', error);
+            }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // Update call details
+        async function updateCallDetails() {
+            if (!currentCallId) return;
+
+            try {
+                const response = await fetch(`/api/calls/${currentCallId}/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        call_type: document.getElementById('callType').value,
+                        outcome: document.getElementById('callOutcome').value,
+                        notes: document.getElementById('callNotes').value,
+                    }),
+                });
+
+                if (response.ok) {
+                    // Reload call history to show updated data
+                    loadCallHistory();
+                    // Show success message
+                    alert('Call details updated successfully');
+                } else {
+                    throw new Error('Failed to update call details');
+                }
+            } catch (error) {
+                console.error('Error updating call details:', error);
+                alert('Failed to update call details');
+            }
+        }
+
+        // Update conversation turn note
+        async function updateTurnNote(turnId, note) {
+            if (!currentCallId) return;
+
+            try {
+                const response = await fetch(`/api/calls/${currentCallId}/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversation_notes: {
+                            [turnId]: note
+                        }
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update note');
+                }
+            } catch (error) {
+                console.error('Error updating note:', error);
+                alert('Failed to update note');
+            }
+        }
+
+        // Close call details
+        function closeCallDetails() {
+            document.getElementById('callDetails').classList.add('hidden');
+            currentCallId = null;
+        }
+
+        // Load call history when page loads
+        document.addEventListener('DOMContentLoaded', loadCallHistory);
+    </script>
+</body>
+</html> 

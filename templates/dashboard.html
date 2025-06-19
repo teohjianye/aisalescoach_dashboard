@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sales Coaching Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl font-bold text-gray-900">AI Sales Coaching Dashboard</h1>
+                    <div class="flex space-x-4">
+                        <button onclick="showOverview()" id="overviewBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Overview
+                        </button>
+                        <button onclick="showCallHistory()" id="callHistoryBtn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            Call History
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Overview Dashboard -->
+            <div id="overviewSection" class="space-y-6">
+                <!-- Overall Statistics -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Overall Performance</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="overallStats">
+                            <!-- Statistics will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call Method Performance -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Performance by Call Method</h2>
+                        
+                        <!-- Filter Controls -->
+                        <div class="mb-6 flex flex-wrap gap-4 items-end">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Call Method:</label>
+                                <select id="callMethodFilter" onchange="filterByCallMethod()" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Methods</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Outcome:</label>
+                                <select id="outcomeFilter" onchange="filterByCallMethod()" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Outcomes</option>
+                                    <option value="Won">Won</option>
+                                    <option value="Follow up required">Follow up required</option>
+                                    <option value="Lost">Lost</option>
+                                    <option value="Escalated">Escalated</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button onclick="clearOverviewFilters()" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                                    Clear Filters
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Call Method Statistics -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Call Method</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Calls</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Won</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lost</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow Up</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="callMethodStatsBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Call method statistics will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Rep Performance -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Sales Rep Performance</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Rep</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Calls</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Won</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lost</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="salesRepStatsBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Sales rep statistics will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Average Score by Call Method</h3>
+                            <canvas id="callMethodChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Win Rate by Call Method</h3>
+                            <canvas id="winRateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call History Section -->
+            <div id="callHistorySection" class="hidden space-y-6">
+                <!-- Filters -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Filter Calls</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Call Method:</label>
+                                <select id="historyCallMethodFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Methods</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Sales Rep:</label>
+                                <select id="historySalesRepFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Reps</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Outcome:</label>
+                                <select id="historyOutcomeFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Outcomes</option>
+                                    <option value="Won">Won</option>
+                                    <option value="Follow up required">Follow up required</option>
+                                    <option value="Lost">Lost</option>
+                                    <option value="Escalated">Escalated</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button onclick="clearHistoryFilters()" class="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                                    Clear Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call History Table -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Call History</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Rep</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outcome</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="callsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Call history will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call Details Modal -->
+            <div id="callDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-xl font-semibold text-gray-900">Call Details</h2>
+                                <button onclick="closeCallDetails()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4" id="callDetailsContent">
+                            <!-- Call details will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let dashboardData = null;
+        let currentView = 'overview';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+        });
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard/overview');
+                dashboardData = await response.json();
+                
+                populateOverallStats();
+                populateCallMethodStats();
+                populateSalesRepStats();
+                populateFilters();
+                createCharts();
+                
+                console.log('Dashboard data loaded:', dashboardData);
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Populate overall statistics
+        function populateOverallStats() {
+            const stats = dashboardData.overall;
+            document.getElementById('overallStats').innerHTML = `
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">${stats.total_calls}</div>
+                    <div class="text-sm text-gray-600">Total Calls</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">${stats.overall_avg_score.toFixed(1)}</div>
+                    <div class="text-sm text-gray-600">Average Score</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600">${stats.overall_win_rate}%</div>
+                    <div class="text-sm text-gray-600">Win Rate</div>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-yellow-600">${stats.total_won}</div>
+                    <div class="text-sm text-gray-600">Won Deals</div>
+                </div>
+            `;
+        }
+
+        // Populate call method statistics
+        function populateCallMethodStats() {
+            const tbody = document.getElementById('callMethodStatsBody');
+            tbody.innerHTML = '';
+            
+            dashboardData.call_types.forEach(callType => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${callType.call_type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${callType.call_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(callType.avg_score)}">
+                            ${callType.avg_score.toFixed(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${callType.win_rate}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">${callType.won_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">${callType.lost_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">${callType.follow_up_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button onclick="drillDownCallMethod('${callType.call_type}')" class="text-indigo-600 hover:text-indigo-900">
+                            View Details
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Populate sales rep statistics
+        function populateSalesRepStats() {
+            const tbody = document.getElementById('salesRepStatsBody');
+            tbody.innerHTML = '';
+            
+            dashboardData.sales_reps.forEach(rep => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${rep.sales_rep_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rep.call_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(rep.avg_score)}">
+                            ${rep.avg_score.toFixed(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rep.win_rate}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">${rep.won_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">${rep.lost_count}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button onclick="drillDownSalesRep('${rep.sales_rep_name}')" class="text-indigo-600 hover:text-indigo-900">
+                            View Calls
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Populate filter options
+        function populateFilters() {
+            const callMethodFilter = document.getElementById('callMethodFilter');
+            const historyCallMethodFilter = document.getElementById('historyCallMethodFilter');
+            const historySalesRepFilter = document.getElementById('historySalesRepFilter');
+            
+            // Populate call method filters
+            dashboardData.call_types.forEach(callType => {
+                const option1 = new Option(callType.call_type, callType.call_type);
+                const option2 = new Option(callType.call_type, callType.call_type);
+                callMethodFilter.add(option1);
+                historyCallMethodFilter.add(option2);
+            });
+            
+            // Populate sales rep filter
+            dashboardData.sales_reps.forEach(rep => {
+                const option = new Option(rep.sales_rep_name, rep.sales_rep_name);
+                historySalesRepFilter.add(option);
+            });
+        }
+
+        // Create charts
+        function createCharts() {
+            createChartsWithData(dashboardData.call_types);
+        }
+
+        // Helper functions
+        function getScoreColor(score) {
+            if (score >= 8) return 'bg-green-100 text-green-800';
+            if (score >= 7) return 'bg-yellow-100 text-yellow-800';
+            if (score >= 6) return 'bg-orange-100 text-orange-800';
+            return 'bg-red-100 text-red-800';
+        }
+
+        function getOutcomeColor(outcome) {
+            switch (outcome) {
+                case 'Won': return 'bg-green-100 text-green-800';
+                case 'Follow up required': return 'bg-yellow-100 text-yellow-800';
+                case 'Lost': return 'bg-red-100 text-red-800';
+                case 'Escalated': return 'bg-purple-100 text-purple-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Navigation
+        function showOverview() {
+            document.getElementById('overviewSection').classList.remove('hidden');
+            document.getElementById('callHistorySection').classList.add('hidden');
+            document.getElementById('overviewBtn').classList.remove('bg-gray-600');
+            document.getElementById('overviewBtn').classList.add('bg-blue-600');
+            document.getElementById('callHistoryBtn').classList.remove('bg-blue-600');
+            document.getElementById('callHistoryBtn').classList.add('bg-gray-600');
+            currentView = 'overview';
+        }
+
+        function showCallHistory() {
+            document.getElementById('overviewSection').classList.add('hidden');
+            document.getElementById('callHistorySection').classList.remove('hidden');
+            document.getElementById('overviewBtn').classList.remove('bg-blue-600');
+            document.getElementById('overviewBtn').classList.add('bg-gray-600');
+            document.getElementById('callHistoryBtn').classList.remove('bg-gray-600');
+            document.getElementById('callHistoryBtn').classList.add('bg-blue-600');
+            currentView = 'callHistory';
+            
+            if (!document.getElementById('callsTableBody').hasChildNodes()) {
+                loadFilteredCalls();
+            }
+        }
+
+        // Filter functions for overview section
+        function filterByCallMethod() {
+            const selectedCallMethod = document.getElementById('callMethodFilter').value;
+            const selectedOutcome = document.getElementById('outcomeFilter').value;
+            
+            // Filter call method statistics table (this will also update charts)
+            filterCallMethodStats(selectedCallMethod, selectedOutcome);
+        }
+
+        // Filter call method statistics table by reloading data from server
+        async function filterCallMethodStats(selectedCallMethod, selectedOutcome) {
+            try {
+                const params = new URLSearchParams();
+                if (selectedCallMethod) params.append('call_type', selectedCallMethod);
+                if (selectedOutcome) params.append('outcome', selectedOutcome);
+                
+                const response = await fetch(`/api/dashboard/overview?${params}`);
+                const filteredData = await response.json();
+                
+                // Update the table with filtered data
+                const tbody = document.getElementById('callMethodStatsBody');
+                tbody.innerHTML = '';
+                
+                filteredData.call_types.forEach(callType => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${callType.call_type}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${callType.call_count}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(callType.avg_score)}">
+                                ${callType.avg_score.toFixed(1)}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${callType.win_rate}%</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">${callType.won_count}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">${callType.lost_count}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">${callType.follow_up_count}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button onclick="drillDownCallMethod('${callType.call_type}')" class="text-indigo-600 hover:text-indigo-900">
+                                View Details
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // Update charts with filtered data
+                updateChartsWithFilter(filteredData.call_types);
+                
+            } catch (error) {
+                console.error('Error filtering call method stats:', error);
+            }
+        }
+
+        // Update charts with filtered data
+        function updateChartsWithFilter(filteredCallTypes) {
+            // Destroy existing charts
+            Chart.getChart('callMethodChart')?.destroy();
+            Chart.getChart('winRateChart')?.destroy();
+            
+            // Recreate charts with filtered data
+            createChartsWithData(filteredCallTypes);
+        }
+
+        // Create charts with specific data
+        function createChartsWithData(callTypeData) {
+            // Call Method Chart
+            const callMethodCtx = document.getElementById('callMethodChart').getContext('2d');
+            new Chart(callMethodCtx, {
+                type: 'bar',
+                data: {
+                    labels: callTypeData.map(ct => ct.call_type),
+                    datasets: [{
+                        label: 'Average Score',
+                        data: callTypeData.map(ct => ct.avg_score),
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    }
+                }
+            });
+
+            // Win Rate Chart
+            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
+            new Chart(winRateCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: callTypeData.map(ct => ct.call_type),
+                    datasets: [{
+                        data: callTypeData.map(ct => ct.win_rate),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ]
+                    }]
+                }
+            });
+        }
+
+        // Drill down functions
+        function drillDownCallMethod(callType) {
+            showCallHistory();
+            document.getElementById('historyCallMethodFilter').value = callType;
+            loadFilteredCalls();
+        }
+
+        function drillDownSalesRep(salesRep) {
+            showCallHistory();
+            document.getElementById('historySalesRepFilter').value = salesRep;
+            loadFilteredCalls();
+        }
+
+        // Load filtered calls
+        async function loadFilteredCalls() {
+            try {
+                const callType = document.getElementById('historyCallMethodFilter').value;
+                const salesRep = document.getElementById('historySalesRepFilter').value;
+                const outcome = document.getElementById('historyOutcomeFilter').value;
+                
+                const params = new URLSearchParams();
+                if (callType) params.append('call_type', callType);
+                if (salesRep) params.append('sales_rep', salesRep);
+                if (outcome) params.append('outcome', outcome);
+                
+                const response = await fetch(`/api/calls/filter?${params}`);
+                const calls = await response.json();
+                
+                const tableBody = document.getElementById('callsTableBody');
+                tableBody.innerHTML = '';
+                
+                calls.forEach(call => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${new Date(call.timestamp).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.sales_rep_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.customer_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.call_type}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${call.overall_score ? call.overall_score.toFixed(1) : 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getOutcomeColor(call.outcome)}">
+                                ${call.outcome || 'Pending'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button onclick="showCallDetails('${call.id}')" class="text-indigo-600 hover:text-indigo-900">
+                                View Details
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading filtered calls:', error);
+            }
+        }
+
+        // Show call details
+        async function showCallDetails(callId) {
+            try {
+                const response = await fetch(`/api/calls/${callId}`);
+                const data = await response.json();
+                
+                console.log('Call details data:', data); // Debug log
+                
+                const content = document.getElementById('callDetailsContent');
+                content.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Call Information</h3>
+                            <div class="space-y-2">
+                                <p><strong>Date:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                                <p><strong>Sales Rep:</strong> ${data.sales_rep_name}</p>
+                                <p><strong>Customer:</strong> ${data.customer_name}</p>
+                                <p><strong>Method:</strong> ${data.call_type}</p>
+                                <p><strong>Duration:</strong> ${Math.floor(data.duration / 60)}:${(data.duration % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Outcome:</strong> <span class="px-2 py-1 rounded-full text-xs ${getOutcomeColor(data.outcome)}">${data.outcome || 'Pending'}</span></p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">AI Feedback</h3>
+                            ${data.feedback ? `
+                                <div class="space-y-2">
+                                    <p><strong>Overall Score:</strong> <span class="text-2xl font-bold ${data.feedback.overall_score >= 8 ? 'text-green-600' : data.feedback.overall_score >= 7 ? 'text-yellow-600' : 'text-red-600'}">${data.feedback.overall_score.toFixed(1)}/10</span></p>
+                                    <p><strong>What Went Well:</strong> ${data.feedback.what_went_well}</p>
+                                    <p><strong>Areas for Improvement:</strong> ${data.feedback.what_could_be_improved}</p>
+                                </div>
+                            ` : '<p class="text-gray-500">No feedback available</p>'}
+                        </div>
+                    </div>
+                    
+                    ${data.conversation && data.conversation.length > 0 ? `
+                        <div class="mt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Conversation</h3>
+                            <div class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
+                                ${data.conversation.map(turn => `
+                                    <div class="mb-2">
+                                        <strong class="${turn.speaker === 'sales_rep' ? 'text-blue-600' : 'text-green-600'}">${turn.speaker === 'sales_rep' ? 'Sales Rep' : 'Customer'}:</strong>
+                                        <span class="text-gray-800">${turn.text}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+                
+                document.getElementById('callDetailsModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading call details:', error);
+                alert('Error loading call details. Please check the console for more information.');
+            }
+        }
+
+        // Close call details
+        function closeCallDetails() {
+            document.getElementById('callDetailsModal').classList.add('hidden');
+        }
+
+        // Clear overview filters
+        function clearOverviewFilters() {
+            document.getElementById('callMethodFilter').value = '';
+            document.getElementById('outcomeFilter').value = '';
+            
+            // Reset to original data
+            populateCallMethodStats();
+            createCharts();
+        }
+
+        // Clear history filters
+        function clearHistoryFilters() {
+            document.getElementById('historyCallMethodFilter').value = '';
+            document.getElementById('historySalesRepFilter').value = '';
+            document.getElementById('historyOutcomeFilter').value = '';
+            
+            // Reload all calls
+            loadFilteredCalls();
+        }
+    </script>
+</body>
+</html> 
