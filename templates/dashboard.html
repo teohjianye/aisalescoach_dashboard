@@ -142,7 +142,7 @@
                 <div class="bg-white shadow rounded-lg">
                     <div class="px-4 py-5 sm:p-6">
                         <h2 class="text-xl font-semibold text-gray-900 mb-4">Filter Calls</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Call Method:</label>
                                 <select id="historyCallMethodFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -153,6 +153,12 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Sales Rep:</label>
                                 <select id="historySalesRepFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="">All Reps</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Customer:</label>
+                                <select id="historyCustomerFilter" onchange="loadFilteredCalls()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">All Customers</option>
                                 </select>
                             </div>
                             <div>
@@ -240,7 +246,7 @@
                 populateOverallStats();
                 populateCallMethodStats();
                 populateSalesRepStats();
-                populateFilters();
+                await populateFilters();
                 createCharts();
                 
                 console.log('Dashboard data loaded:', dashboardData);
@@ -330,24 +336,59 @@
         }
 
         // Populate filter options
-        function populateFilters() {
-            const callMethodFilter = document.getElementById('callMethodFilter');
-            const historyCallMethodFilter = document.getElementById('historyCallMethodFilter');
-            const historySalesRepFilter = document.getElementById('historySalesRepFilter');
-            
-            // Populate call method filters
-            dashboardData.call_types.forEach(callType => {
-                const option1 = new Option(callType.call_type, callType.call_type);
-                const option2 = new Option(callType.call_type, callType.call_type);
-                callMethodFilter.add(option1);
-                historyCallMethodFilter.add(option2);
-            });
-            
-            // Populate sales rep filter
-            dashboardData.sales_reps.forEach(rep => {
-                const option = new Option(rep.sales_rep_name, rep.sales_rep_name);
-                historySalesRepFilter.add(option);
-            });
+        async function populateFilters() {
+            try {
+                // Load filter options from the API
+                const response = await fetch('/api/filter-options');
+                const filterOptions = await response.json();
+                
+                const callMethodFilter = document.getElementById('callMethodFilter');
+                const historyCallMethodFilter = document.getElementById('historyCallMethodFilter');
+                const historySalesRepFilter = document.getElementById('historySalesRepFilter');
+                const historyCustomerFilter = document.getElementById('historyCustomerFilter');
+                
+                // Populate call method filters from dashboard data (for overview section)
+                dashboardData.call_types.forEach(callType => {
+                    const option1 = new Option(callType.call_type, callType.call_type);
+                    callMethodFilter.add(option1);
+                });
+                
+                // Populate history filters from API data (includes all unique values)
+                filterOptions.call_types.forEach(callType => {
+                    const option = new Option(callType, callType);
+                    historyCallMethodFilter.add(option);
+                });
+                
+                filterOptions.sales_reps.forEach(salesRep => {
+                    const option = new Option(salesRep, salesRep);
+                    historySalesRepFilter.add(option);
+                });
+                
+                filterOptions.customers.forEach(customer => {
+                    const option = new Option(customer, customer);
+                    historyCustomerFilter.add(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+                
+                // Fallback: populate filters from dashboard data
+                const callMethodFilter = document.getElementById('callMethodFilter');
+                const historyCallMethodFilter = document.getElementById('historyCallMethodFilter');
+                const historySalesRepFilter = document.getElementById('historySalesRepFilter');
+                
+                dashboardData.call_types.forEach(callType => {
+                    const option1 = new Option(callType.call_type, callType.call_type);
+                    const option2 = new Option(callType.call_type, callType.call_type);
+                    callMethodFilter.add(option1);
+                    historyCallMethodFilter.add(option2);
+                });
+                
+                dashboardData.sales_reps.forEach(rep => {
+                    const option = new Option(rep.sales_rep_name, rep.sales_rep_name);
+                    historySalesRepFilter.add(option);
+                });
+            }
         }
 
         // Create charts
@@ -526,11 +567,13 @@
             try {
                 const callType = document.getElementById('historyCallMethodFilter').value;
                 const salesRep = document.getElementById('historySalesRepFilter').value;
+                const customer = document.getElementById('historyCustomerFilter').value;
                 const outcome = document.getElementById('historyOutcomeFilter').value;
                 
                 const params = new URLSearchParams();
                 if (callType) params.append('call_type', callType);
                 if (salesRep) params.append('sales_rep', salesRep);
+                if (customer) params.append('customer', customer);
                 if (outcome) params.append('outcome', outcome);
                 
                 const response = await fetch(`/api/calls/filter?${params}`);
@@ -578,58 +621,241 @@
             }
         }
 
-        // Show call details
+        // Helper function for transcript references
+        function getTranscriptReferences(transcriptRefs, category) {
+            if (!transcriptRefs || !transcriptRefs[category] || !Array.isArray(transcriptRefs[category])) {
+                return '';
+            }
+            
+            const references = transcriptRefs[category];
+            if (references.length === 0) {
+                return '';
+            }
+            
+            const refHtml = references.map(ref => {
+                // Parse the reference string (format: "timestamp: X, speaker: Y, text: 'Z'")
+                const match = ref.match(/timestamp: ([\d.]+), speaker: ([^,]+), text: '([^']+)'/);
+                if (match) {
+                    const [, timestamp, speaker, text] = match;
+                    return `<div class="text-xs text-gray-600 bg-gray-50 p-2 mt-1 rounded">
+                        <strong>${speaker}</strong> (${formatTime(parseFloat(timestamp))}): "${text}"
+                    </div>`;
+                }
+                return `<div class="text-xs text-gray-600 bg-gray-50 p-2 mt-1 rounded">${ref}</div>`;
+            }).join('');
+            
+            return `<div class="mt-2">
+                <span class="text-xs font-medium text-gray-700">Transcript References:</span>
+                ${refHtml}
+            </div>`;
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // Show call details with comprehensive information
         async function showCallDetails(callId) {
             try {
+                console.log('🔍 Opening call details for:', callId);
                 const response = await fetch(`/api/calls/${callId}`);
                 const data = await response.json();
-                
-                console.log('Call details data:', data); // Debug log
+                console.log('📊 API Response:', data);
                 
                 const content = document.getElementById('callDetailsContent');
-                content.innerHTML = `
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
+                
+                // Build comprehensive call details
+                let html = `
+                    <!-- Call Info and Summary -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-gray-50 p-6 rounded-lg">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Call Information</h3>
                             <div class="space-y-2">
-                                <p><strong>Date:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
-                                <p><strong>Sales Rep:</strong> ${data.sales_rep_name}</p>
-                                <p><strong>Customer:</strong> ${data.customer_name}</p>
-                                <p><strong>Method:</strong> ${data.call_type}</p>
-                                <p><strong>Duration:</strong> ${Math.floor(data.duration / 60)}:${(data.duration % 60).toString().padStart(2, '0')}</p>
-                                <p><strong>Outcome:</strong> <span class="px-2 py-1 rounded-full text-xs ${getOutcomeColor(data.outcome)}">${data.outcome || 'Pending'}</span></p>
+                                <p><strong>Date:</strong> ${new Date(data.call.timestamp).toLocaleString()}</p>
+                                <p><strong>Sales Rep:</strong> ${data.call.sales_rep_name}</p>
+                                <p><strong>Customer:</strong> ${data.call.customer_name}</p>
+                                <p><strong>Method:</strong> ${data.call.call_type}</p>
+                                <p><strong>Duration:</strong> ${Math.floor(data.call.duration / 60)}:${(data.call.duration % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Outcome:</strong> <span class="px-2 py-1 rounded-full text-xs ${getOutcomeColor(data.call.outcome)}">${data.call.outcome || 'Pending'}</span></p>
                             </div>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">AI Feedback</h3>
-                            ${data.feedback ? `
-                                <div class="space-y-2">
-                                    <p><strong>Overall Score:</strong> <span class="text-2xl font-bold ${data.feedback.overall_score >= 8 ? 'text-green-600' : data.feedback.overall_score >= 7 ? 'text-yellow-600' : 'text-red-600'}">${data.feedback.overall_score.toFixed(1)}/10</span></p>
-                                    <p><strong>What Went Well:</strong> ${data.feedback.what_went_well}</p>
-                                    <p><strong>Areas for Improvement:</strong> ${data.feedback.what_could_be_improved}</p>
-                                </div>
-                            ` : '<p class="text-gray-500">No feedback available</p>'}
-                        </div>
-                    </div>
+                        </div>`;
+
+                if (data.feedback) {
+                    console.log('✅ Feedback data available');
+                    const metrics = data.feedback.conversation_metrics || {};
                     
-                    ${data.conversation && data.conversation.length > 0 ? `
-                        <div class="mt-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Conversation</h3>
-                            <div class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
-                                ${data.conversation.map(turn => `
-                                    <div class="mb-2">
-                                        <strong class="${turn.speaker === 'sales_rep' ? 'text-blue-600' : 'text-green-600'}">${turn.speaker === 'sales_rep' ? 'Sales Rep' : 'Customer'}:</strong>
-                                        <span class="text-gray-800">${turn.text}</span>
-                                    </div>
-                                `).join('')}
+                    html += `
+                        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                            <h3 class="text-lg font-medium text-blue-900 mb-4">AI Feedback Summary</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p><strong>Overall Score:</strong> ${data.feedback.overall_score ? data.feedback.overall_score.toFixed(1) : 'N/A'}/100</p>
+                                    <p><strong>Primary Concern:</strong> ${data.feedback.customer_primary_concern || 'N/A'}</p>
+                                    <p><strong>Questions Asked:</strong> ${metrics.questionsAsked || 0}</p>
+                                    <p><strong>Talk Ratio:</strong> ${metrics.talkRatio ? metrics.talkRatio.toFixed(2) : 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p><strong>Sales Rep Talk Time:</strong> ${metrics.salesRepTalkTime ? metrics.salesRepTalkTime.toFixed(1) : 'N/A'}s</p>
+                                    <p><strong>Customer Talk Time:</strong> ${metrics.customerTalkTime ? metrics.customerTalkTime.toFixed(1) : 'N/A'}s</p>
+                                    <p><strong>Sales Rep Turns:</strong> ${metrics.salesRepTurns || 0}</p>
+                                    <p><strong>Customer Turns:</strong> ${metrics.customerTurns || 0}</p>
+                                </div>
                             </div>
                         </div>
-                    ` : ''}
-                `;
+                    </div>`;
+
+                    // Conversation Transcript
+                    if (data.turns && data.turns.length > 0) {
+                        html += `
+                            <div class="mb-8">
+                                <h3 class="text-xl font-semibold text-gray-900 mb-4">Conversation Transcript</h3>
+                                <div class="bg-gray-50 p-4 rounded-lg border space-y-4 max-h-96 overflow-y-auto">`;
+                        
+                        data.turns.forEach(turn => {
+                            html += `
+                                <div class="p-3 rounded-lg ${turn.speaker === 'sales_rep' ? 'bg-blue-50' : 'bg-gray-100'}">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-semibold">${turn.speaker === 'sales_rep' ? data.call.sales_rep_name : data.call.customer_name}</p>
+                                            <p>${turn.text}</p>
+                                            <p class="text-xs text-gray-500">${formatTime(turn.start_time || 0)} - ${formatTime(turn.end_time || 0)}</p>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>`;
+                    }
+
+                    // Comprehensive AI Analysis
+                    html += `
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-6">Comprehensive AI Analysis</h3>
+                            <div class="space-y-6">
+                                
+                                <!-- Full Transcript -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-blue-600 mb-3">Full Transcript</h4>
+                                    <div class="bg-white p-4 rounded border">
+                                        <p class="text-gray-700 whitespace-pre-line">${data.call.transcription || 'No transcript available'}</p>
+                                    </div>
+                                </div>
+
+                                <!-- What Went Well -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-green-600 mb-3">What Went Well</h4>
+                                    <div class="bg-green-50 p-4 rounded border border-green-200">
+                                        <p class="text-gray-700 mb-2">${data.feedback.what_went_well || 'No assessment available'}</p>
+                                        ${getTranscriptReferences(data.feedback.transcript_references, 'what_went_well')}
+                                    </div>
+                                </div>
+
+                                <!-- Areas for Improvement -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-red-600 mb-3">Areas for Improvement</h4>
+                                    <div class="bg-red-50 p-4 rounded border border-red-200">
+                                        <p class="text-gray-700 mb-2">${data.feedback.what_could_be_improved || 'No assessment available'}</p>
+                                        ${getTranscriptReferences(data.feedback.transcript_references, 'what_could_be_improved')}
+                                    </div>
+                                </div>
+
+                                <!-- Discovery Questions Assessment -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-purple-600 mb-3">Discovery Questions Assessment</h4>
+                                    <div class="bg-purple-50 p-4 rounded border border-purple-200">
+                                        <p class="text-gray-700 mb-2">${data.feedback.discovery_questions_assessment || 'No assessment available'}</p>
+                                        ${getTranscriptReferences(data.feedback.transcript_references, 'discovery_questions')}
+                                    </div>
+                                </div>
+
+                                <!-- Objection Handling Evaluation -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-orange-600 mb-3">Objection Handling Evaluation</h4>
+                                    <div class="bg-orange-50 p-4 rounded border border-orange-200">
+                                        <p class="text-gray-700 mb-2">${data.feedback.objection_handling_evaluation || 'No evaluation available'}</p>
+                                        ${getTranscriptReferences(data.feedback.transcript_references, 'objection_handling')}
+                                    </div>
+                                </div>
+
+                                <!-- Customer's Primary Concern -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-indigo-600 mb-3">Customer's Primary Concern</h4>
+                                    <div class="bg-indigo-50 p-4 rounded border border-indigo-200">
+                                        <p class="text-gray-700">${data.feedback.customer_primary_concern || 'No primary concern identified'}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Conversation Metrics -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-teal-600 mb-3">Conversation Metrics</h4>
+                                    <div class="bg-teal-50 p-4 rounded border border-teal-200">
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div class="text-center">
+                                                <div class="text-2xl font-bold text-teal-600">${metrics.questionsAsked || 0}</div>
+                                                <div class="text-sm text-gray-600">Questions Asked</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-2xl font-bold text-teal-600">${metrics.talkRatio ? metrics.talkRatio.toFixed(1) : 'N/A'}</div>
+                                                <div class="text-sm text-gray-600">Talk Ratio</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-2xl font-bold text-teal-600">${metrics.salesRepTurns || 0}</div>
+                                                <div class="text-sm text-gray-600">Rep Turns</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-2xl font-bold text-teal-600">${metrics.customerTurns || 0}</div>
+                                                <div class="text-sm text-gray-600">Customer Turns</div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 grid grid-cols-2 gap-4">
+                                            <div class="text-center">
+                                                <div class="text-lg font-semibold text-teal-600">${metrics.salesRepTalkTime ? metrics.salesRepTalkTime.toFixed(1) : 'N/A'}s</div>
+                                                <div class="text-sm text-gray-600">Sales Rep Talk Time</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-lg font-semibold text-teal-600">${metrics.customerTalkTime ? metrics.customerTalkTime.toFixed(1) : 'N/A'}s</div>
+                                                <div class="text-sm text-gray-600">Customer Talk Time</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Recommendations -->
+                                <div class="mb-6">
+                                    <h4 class="font-semibold text-gray-700 mb-3">Recommendations</h4>
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <ul class="space-y-2">
+                                            ${data.feedback.recommendations ? data.feedback.recommendations.map((rec, index) => 
+                                                `<li class="flex items-start">
+                                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium flex items-center justify-center mr-3">${index + 1}</span>
+                                                    <span class="text-gray-700">${rec}</span>
+                                                </li>`
+                                            ).join('') : '<li class="text-gray-500">No recommendations available</li>'}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                } else {
+                    console.log('❌ No feedback data available');
+                    html += `
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">AI Feedback</h3>
+                            <p class="text-gray-500">No feedback available</p>
+                        </div>
+                    </div>`;
+                }
                 
+                content.innerHTML = html;
+                console.log('✅ Modal content populated');
                 document.getElementById('callDetailsModal').classList.remove('hidden');
+                console.log('✅ Modal should be visible now');
             } catch (error) {
-                console.error('Error loading call details:', error);
+                console.error('❌ Error loading call details:', error);
                 alert('Error loading call details. Please check the console for more information.');
             }
         }
@@ -653,6 +879,7 @@
         function clearHistoryFilters() {
             document.getElementById('historyCallMethodFilter').value = '';
             document.getElementById('historySalesRepFilter').value = '';
+            document.getElementById('historyCustomerFilter').value = '';
             document.getElementById('historyOutcomeFilter').value = '';
             
             // Reload all calls

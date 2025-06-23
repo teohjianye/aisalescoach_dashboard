@@ -167,6 +167,7 @@ def get_dashboard_overview():
 def get_filtered_calls():
     call_type = request.args.get('call_type')
     sales_rep = request.args.get('sales_rep')
+    customer = request.args.get('customer')
     outcome = request.args.get('outcome')
     
     conn = get_db_connection()
@@ -188,6 +189,10 @@ def get_filtered_calls():
     if sales_rep:
         query += ' AND cr.sales_rep_name = %s'
         params.append(sales_rep)
+    
+    if customer:
+        query += ' AND cr.customer_name = %s'
+        params.append(customer)
     
     if outcome:
         query += ' AND cr.outcome = %s'
@@ -233,66 +238,97 @@ def get_call_details(call_id):
     
     # Get conversation turns
     cur.execute('''
-        SELECT speaker, text, start_time, end_time, confidence, notes
-        FROM conversation_turns 
+        SELECT * FROM conversation_turns 
         WHERE call_record_id = %s 
-        ORDER BY start_time ASC
+        ORDER BY id ASC
     ''', (call_id,))
-    conversation_turns = cur.fetchall()
+    turns = cur.fetchall()
     
-    # Get call feedback
-    cur.execute('''
-        SELECT what_went_well, what_could_be_improved, 
-               discovery_questions_assessment, objection_handling_evaluation,
-               customer_primary_concern, conversation_metrics, overall_score,
-               recommendations, feedback_timestamps, transcript_references
-        FROM call_feedback 
-        WHERE call_id = %s
-    ''', (call_id,))
+    # Get feedback
+    cur.execute('SELECT * FROM call_feedback WHERE call_id = %s', (call_id,))
     feedback = cur.fetchone()
     
     cur.close()
     conn.close()
     
-    # Format conversation
-    conversation = []
-    for turn in conversation_turns:
-        conversation.append({
+    # Format response
+    result = {
+        'call': {
+            'id': call['id'],
+            'timestamp': call['timestamp'].isoformat() if call['timestamp'] else None,
+            'duration': call['duration'],
+            'sales_rep_name': call['sales_rep_name'],
+            'customer_name': call['customer_name'],
+            'audio_file_path': call['audio_file_path'],
+            'transcription': call['transcription'],
+            'status': call['status'],
+            'call_type': call['call_type'],
+            'outcome': call['outcome'],
+            'notes': call['notes']
+        },
+        'turns': []
+    }
+    
+    for turn in turns:
+        result['turns'].append({
+            'id': turn['id'],
             'speaker': turn['speaker'],
             'text': turn['text'],
-            'start_time': float(turn['start_time']),
-            'end_time': float(turn['end_time']),
-            'confidence': float(turn['confidence']),
+            'start_time': float(turn['start_time']) if turn['start_time'] else None,
+            'end_time': float(turn['end_time']) if turn['end_time'] else None,
+            'confidence': float(turn['confidence']) if turn['confidence'] else None,
             'notes': turn['notes']
         })
     
-    result = {
-        'id': call['id'],
-        'timestamp': call['timestamp'].isoformat() if call['timestamp'] else None,
-        'duration': call['duration'],
-        'sales_rep_name': call['sales_rep_name'],
-        'customer_name': call['customer_name'],
-        'audio_file_path': call['audio_file_path'],
-        'transcription': call['transcription'],
-        'status': call['status'],
-        'call_type': call['call_type'],
-        'outcome': call['outcome'],
-        'notes': call['notes'],
-        'conversation': conversation
-    }
-    
     if feedback:
+        # Handle JSON parsing for complex fields (same as mobile app)
+        try:
+            conversation_metrics = feedback['conversation_metrics']
+            if isinstance(conversation_metrics, str):
+                conversation_metrics = json.loads(conversation_metrics)
+            elif conversation_metrics is None:
+                conversation_metrics = {}
+        except (json.JSONDecodeError, TypeError):
+            conversation_metrics = {}
+        
+        try:
+            recommendations = feedback['recommendations']
+            if isinstance(recommendations, str):
+                recommendations = json.loads(recommendations)
+            elif recommendations is None:
+                recommendations = []
+        except (json.JSONDecodeError, TypeError):
+            recommendations = []
+        
+        try:
+            feedback_timestamps = feedback['feedback_timestamps']
+            if isinstance(feedback_timestamps, str):
+                feedback_timestamps = json.loads(feedback_timestamps)
+            elif feedback_timestamps is None:
+                feedback_timestamps = {}
+        except (json.JSONDecodeError, TypeError):
+            feedback_timestamps = {}
+        
+        try:
+            transcript_references = feedback['transcript_references']
+            if isinstance(transcript_references, str):
+                transcript_references = json.loads(transcript_references)
+            elif transcript_references is None:
+                transcript_references = {}
+        except (json.JSONDecodeError, TypeError):
+            transcript_references = {}
+        
         result['feedback'] = {
             'what_went_well': feedback['what_went_well'],
             'what_could_be_improved': feedback['what_could_be_improved'],
             'discovery_questions_assessment': feedback['discovery_questions_assessment'],
             'objection_handling_evaluation': feedback['objection_handling_evaluation'],
             'customer_primary_concern': feedback['customer_primary_concern'],
-            'conversation_metrics': feedback['conversation_metrics'] if feedback['conversation_metrics'] else {},
+            'conversation_metrics': conversation_metrics,
             'overall_score': float(feedback['overall_score']) if feedback['overall_score'] else None,
-            'recommendations': feedback['recommendations'] if feedback['recommendations'] else [],
-            'feedback_timestamps': feedback['feedback_timestamps'] if feedback['feedback_timestamps'] else {},
-            'transcript_references': feedback['transcript_references'] if feedback['transcript_references'] else {}
+            'recommendations': recommendations,
+            'feedback_timestamps': feedback_timestamps,
+            'transcript_references': transcript_references
         }
     
     return jsonify(result)
@@ -304,12 +340,12 @@ def update_call(call_id):
     cur = conn.cursor()
     
     try:
-        # Update call record
+        # Update call record (including call_type which was missing)
         cur.execute('''
             UPDATE call_records 
-            SET outcome = %s, notes = %s, updated_at = NOW()
+            SET call_type = %s, outcome = %s, notes = %s, updated_at = NOW()
             WHERE id = %s
-        ''', (data.get('outcome'), data.get('notes'), call_id))
+        ''', (data.get('call_type'), data.get('outcome'), data.get('notes'), call_id))
         
         conn.commit()
         cur.close()
@@ -357,6 +393,285 @@ def create_call():
         cur.close()
         conn.close()
         return jsonify({'error': str(e)}), 500
+
+# Customer Management API Endpoints
+
+@app.route('/api/customers')
+def get_customers():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM customers ORDER BY name ASC')
+    customers = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    customers_list = []
+    for customer in customers:
+        customers_list.append({
+            'id': customer['id'],
+            'name': customer['name'],
+            'company': customer['company'],
+            'phone': customer['phone'],
+            'email': customer['email'],
+            'notes': customer['notes'],
+            'created_at': customer['created_at'].isoformat() if customer['created_at'] else None,
+            'updated_at': customer['updated_at'].isoformat() if customer['updated_at'] else None
+        })
+    
+    return jsonify(customers_list)
+
+@app.route('/api/customers', methods=['POST'])
+def create_customer():
+    data = request.json
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Name is required'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('''
+            INSERT INTO customers (id, name, company, phone, email, notes, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        ''', (
+            data['id'],
+            data['name'],
+            data.get('company'),
+            data.get('phone'),
+            data.get('email'),
+            data.get('notes')
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Customer created successfully'}), 201
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/customers/<customer_id>', methods=['PUT'])
+def update_customer(customer_id):
+    data = request.json
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Name is required'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('''
+            UPDATE customers 
+            SET name = %s, company = %s, phone = %s, email = %s, notes = %s, updated_at = NOW()
+            WHERE id = %s
+        ''', (
+            data['name'],
+            data.get('company'),
+            data.get('phone'),
+            data.get('email'),
+            data.get('notes'),
+            customer_id
+        ))
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Customer updated successfully'})
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/customers/<customer_id>', methods=['DELETE'])
+def delete_customer(customer_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('DELETE FROM customers WHERE id = %s', (customer_id,))
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Customer deleted successfully'})
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+# Sales Rep Management API Endpoints
+
+@app.route('/api/sales-reps')
+def get_sales_reps():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM sales_reps ORDER BY name ASC')
+    sales_reps = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    sales_reps_list = []
+    for sales_rep in sales_reps:
+        sales_reps_list.append({
+            'id': sales_rep['id'],
+            'name': sales_rep['name'],
+            'email': sales_rep['email'],
+            'phone': sales_rep['phone'],
+            'title': sales_rep['title'],
+            'department': sales_rep['department'],
+            'created_at': sales_rep['created_at'].isoformat() if sales_rep['created_at'] else None,
+            'updated_at': sales_rep['updated_at'].isoformat() if sales_rep['updated_at'] else None
+        })
+    
+    return jsonify(sales_reps_list)
+
+@app.route('/api/sales-reps', methods=['POST'])
+def create_sales_rep():
+    data = request.json
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Name is required'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('''
+            INSERT INTO sales_reps (id, name, email, phone, title, department, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        ''', (
+            data['id'],
+            data['name'],
+            data.get('email'),
+            data.get('phone'),
+            data.get('title'),
+            data.get('department')
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Sales rep created successfully'}), 201
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sales-reps/<sales_rep_id>', methods=['PUT'])
+def update_sales_rep(sales_rep_id):
+    data = request.json
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Name is required'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('''
+            UPDATE sales_reps 
+            SET name = %s, email = %s, phone = %s, title = %s, department = %s, updated_at = NOW()
+            WHERE id = %s
+        ''', (
+            data['name'],
+            data.get('email'),
+            data.get('phone'),
+            data.get('title'),
+            data.get('department'),
+            sales_rep_id
+        ))
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Sales rep not found'}), 404
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Sales rep updated successfully'})
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sales-reps/<sales_rep_id>', methods=['DELETE'])
+def delete_sales_rep(sales_rep_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('DELETE FROM sales_reps WHERE id = %s', (sales_rep_id,))
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Sales rep not found'}), 404
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Sales rep deleted successfully'})
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+# Filter options endpoints
+
+@app.route('/api/filter-options')
+def get_filter_options():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Get unique sales reps
+    cur.execute('SELECT DISTINCT sales_rep_name FROM call_records WHERE sales_rep_name IS NOT NULL ORDER BY sales_rep_name')
+    sales_reps = [row['sales_rep_name'] for row in cur.fetchall()]
+    
+    # Get unique customers
+    cur.execute('SELECT DISTINCT customer_name FROM call_records WHERE customer_name IS NOT NULL ORDER BY customer_name')
+    customers = [row['customer_name'] for row in cur.fetchall()]
+    
+    # Get unique call types
+    cur.execute('SELECT DISTINCT call_type FROM call_records WHERE call_type IS NOT NULL ORDER BY call_type')
+    call_types = [row['call_type'] for row in cur.fetchall()]
+    
+    # Get unique outcomes
+    cur.execute('SELECT DISTINCT outcome FROM call_records WHERE outcome IS NOT NULL ORDER BY outcome')
+    outcomes = [row['outcome'] for row in cur.fetchall()]
+    
+    cur.close()
+    conn.close()
+    
+    return jsonify({
+        'sales_reps': sales_reps,
+        'customers': customers,
+        'call_types': call_types,
+        'outcomes': outcomes
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
