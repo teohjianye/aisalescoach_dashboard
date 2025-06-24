@@ -434,9 +434,8 @@
             document.getElementById('callHistoryBtn').classList.add('bg-blue-600');
             currentView = 'callHistory';
             
-            if (!document.getElementById('callsTableBody').hasChildNodes()) {
-                loadFilteredCalls();
-            }
+            // Auto-clear filters and load all calls when switching to Call History
+            clearHistoryFilters();
         }
 
         // Filter functions for overview section
