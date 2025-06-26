@@ -28,6 +28,10 @@ def get_db_connection():
 def index():
     return render_template('dashboard.html')
 
+@app.route('/customer-outcomes')
+def customer_outcomes():
+    return render_template('customer_outcomes.html')
+
 @app.route('/api/calls')
 def get_calls():
     conn = get_db_connection()
@@ -672,6 +676,107 @@ def get_filter_options():
         'call_types': call_types,
         'outcomes': outcomes
     })
+
+@app.route('/api/customer-outcomes')
+def get_customer_outcomes():
+    """Get all calls organized by their outcomes"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Get all call records
+    cur.execute('''
+        SELECT 
+            id,
+            customer_name,
+            sales_rep_name,
+            call_type,
+            outcome,
+            timestamp,
+            duration,
+            status,
+            notes
+        FROM call_records 
+        ORDER BY timestamp DESC
+    ''')
+    
+    calls = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    # Organize all calls by outcome
+    outcome_groups = {
+        'Won': [],
+        'Follow up required': [],
+        'Lost': [],
+        'Escalated': [],
+        'No outcome': []  # For calls without an outcome
+    }
+    
+    for call in calls:
+        outcome = call['outcome'] if call['outcome'] else 'No outcome'
+        if outcome not in outcome_groups:
+            outcome_groups[outcome] = []
+            
+        outcome_groups[outcome].append({
+            'call_id': call['id'],
+            'customer_name': call['customer_name'] or 'No customer name',
+            'sales_rep_name': call['sales_rep_name'],
+            'timestamp': call['timestamp'].isoformat() if call['timestamp'] else None,
+            'call_type': call['call_type'],
+            'outcome': call['outcome'],
+            'duration': call['duration'],
+            'status': call['status'],
+            'notes': call['notes']
+        })
+    
+    return jsonify(outcome_groups)
+
+@app.route('/api/customer-outcomes/update', methods=['POST'])
+def update_customer_outcome():
+    """Update the outcome for a specific call"""
+    data = request.json
+    call_id = data.get('call_id')
+    new_outcome = data.get('outcome')
+    
+    if not call_id or not new_outcome:
+        return jsonify({'error': 'Call ID and outcome are required'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # Update the outcome for the specific call
+        cur.execute('''
+            UPDATE call_records 
+            SET outcome = %s, updated_at = NOW()
+            WHERE id = %s
+        ''', (new_outcome, call_id))
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Call not found'}), 404
+        
+        # Get the call details for the response message
+        cur.execute('''
+            SELECT customer_name, sales_rep_name FROM call_records 
+            WHERE id = %s
+        ''', (call_id,))
+        
+        call_details = cur.fetchone()
+        customer_name = call_details['customer_name'] or 'Unknown customer'
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': f'Updated call for {customer_name} to {new_outcome}'})
+        
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 

@@ -17,11 +17,17 @@
                     <h1 class="text-3xl font-bold text-gray-900">AI Sales Coaching Dashboard</h1>
                     <div class="flex space-x-4">
                         <button onclick="showOverview()" id="overviewBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-chart-bar mr-2"></i>
                             Overview
                         </button>
                         <button onclick="showCallHistory()" id="callHistoryBtn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-history mr-2"></i>
                             Call History
                         </button>
+                        <a href="/customer-outcomes" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-users mr-2"></i>
+                            Customer Outcomes
+                        </a>
                     </div>
                 </div>
             </div>
@@ -235,6 +241,18 @@
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
+            
+            // Check URL parameters for section navigation
+            const urlParams = new URLSearchParams(window.location.search);
+            const section = urlParams.get('section');
+            
+            if (section === 'history') {
+                // Small delay to ensure data is loaded first
+                setTimeout(() => {
+                    showCallHistory();
+                    loadFilteredCalls(); // Load call history data
+                }, 100);
+            }
         });
 
         // Load dashboard data
@@ -522,7 +540,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 10
+                            max: 100
                         }
                     }
                 }
